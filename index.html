@@ -512,7 +512,7 @@ const MODE_LABEL = {bank:'Bank/GPay',cash:'Cash',cc:'Credit Card',mom:'Mom/Dad'}
 const STORAGE_KEY = 'tamanna_budget_v4';
 const PIN_KEY = 'tamanna_pin_v4';
 const DEFAULT_PIN = '7465';
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -828,60 +828,68 @@ function renderLog(){
 // ═══════════════════════════════════════════
 function renderBudgets(){
   const md=store[viewKey];
-  const frozen=md.frozen||false;
+  const frozen=md.frozen===true;
   const isPast=viewKey<currentKey;
+  const lock=(frozen||isPast);
 
   // Status banner
   const sw=document.getElementById('budget-status-wrap'); sw.innerHTML='';
   if(isPast){
     sw.innerHTML=`<div class="budget-status-banner frozen" style="margin:10px 14px 10px">🔒 Past month — budgets locked.</div>`;
   } else if(frozen){
-    sw.innerHTML=`<div class="budget-status-banner frozen" style="margin:10px 14px 10px">🔒 Budgets frozen for ${keyLabel(viewKey)}. Tap <strong style="margin-left:4px">Edit</strong> to unlock with PIN.</div>`;
+    sw.innerHTML=`<div class="budget-status-banner frozen" style="margin:10px 14px 10px">🔒 Budgets frozen. Tap Edit below to unlock with PIN.</div>`;
   } else {
     sw.innerHTML=`<div class="budget-status-banner open" style="margin:10px 14px 10px">✏️ Budgets are open. Save &amp; Freeze when ready.</div>`;
   }
 
-  // Cards
+  // Cards — build without disabled attr, then set property directly
   const container=document.getElementById('budget-cards'); container.innerHTML='';
   CATEGORIES.forEach(c=>{
     const div=document.createElement('div'); div.className='budget-card';
-    const disabled=(frozen||isPast)?'disabled':'';
-    div.innerHTML=`<div class="budget-card-top"><label for="bgt-${c.key}">${c.label}</label><input type="text" inputmode="numeric" id="bgt-${c.key}" value="${(md.budgets[c.key]||0).toLocaleString('en-IN')}" oninput="formatOnInput(this)" ${disabled}></div>`;
-    container.appendChild(div);
+    const inp=document.createElement('input');
+    inp.type='text'; inp.inputMode='numeric';
+    inp.id='bgt-'+c.key;
+    inp.value=(md.budgets[c.key]||0).toLocaleString('en-IN');
+    inp.oninput=function(){ formatOnInput(this); };
+    inp.disabled=lock;
+    if(lock){ inp.style.background='var(--surface2)'; inp.style.color='var(--muted)'; inp.style.borderColor='transparent'; }
+    const lbl=document.createElement('label'); lbl.htmlFor='bgt-'+c.key; lbl.textContent=c.label;
+    const top=document.createElement('div'); top.className='budget-card-top';
+    top.appendChild(lbl); top.appendChild(inp);
+    div.appendChild(top); container.appendChild(div);
   });
 
   // Actions
   const ba=document.getElementById('budget-actions'); ba.innerHTML='';
   if(isPast){
-    // no actions
+    // no actions for past months
   } else if(frozen){
-    ba.innerHTML=`<button class="btn btn-danger" onclick="requestUnfreeze()">🔓 Edit Budgets (PIN required)</button>`;
+    const btn=document.createElement('button');
+    btn.className='btn btn-danger'; btn.textContent='🔓 Edit Budgets (PIN required)';
+    btn.onclick=requestUnfreeze;
+    ba.appendChild(btn);
   } else {
-    ba.innerHTML=`<button class="btn btn-primary" onclick="saveBudgets(false)">Save</button>
-                  <button class="btn btn-ghost" style="border:1.5px solid var(--yellow);color:var(--yellow)" onclick="saveBudgets(true)">Save &amp; Freeze for Month</button>`;
+    const b1=document.createElement('button'); b1.className='btn btn-primary'; b1.textContent='Save';
+    b1.onclick=function(){ saveBudgets(false); };
+    const b2=document.createElement('button'); b2.className='btn btn-ghost';
+    b2.style.cssText='border:1.5px solid var(--yellow);color:var(--yellow)';
+    b2.textContent='Save & Freeze for Month';
+    b2.onclick=function(){ saveBudgets(true); };
+    ba.appendChild(b1); ba.appendChild(b2);
   }
 }
 
 function saveBudgets(freeze){
-  CATEGORIES.forEach(c=>{ const el=document.getElementById("bgt-"+c.key); if(el&&!el.disabled) store[viewKey].budgets[c.key]=parseNum(el.value); });
+  CATEGORIES.forEach(c=>{ const el=document.getElementById('bgt-'+c.key); if(el&&!el.disabled) store[viewKey].budgets[c.key]=parseNum(el.value); });
   if(freeze) store[viewKey].frozen=true;
-  saveStore(); recalc();
-  document.getElementById("budget-status-wrap").innerHTML="";
-  document.getElementById("budget-cards").innerHTML="";
-  document.getElementById("budget-actions").innerHTML="";
-  renderBudgets();
-  toast(freeze?"Budgets frozen for the month":"Budgets saved");
+  saveStore(); recalc(); renderBudgets();
+  toast(freeze?'Budgets frozen for the month ✓':'Budgets saved ✓');
 }
 
 function requestUnfreeze(){
   openMiniPin('Enter your PIN to edit frozen budgets.', ()=>{
     store[viewKey].frozen=false;
-    saveStore();
-    // force full re-render by clearing containers first
-    document.getElementById('budget-status-wrap').innerHTML='';
-    document.getElementById('budget-cards').innerHTML='';
-    document.getElementById('budget-actions').innerHTML='';
-    renderBudgets();
+    saveStore(); renderBudgets();
     toast('Budgets unlocked — edit and re-freeze when done.');
   });
 }
