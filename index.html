@@ -512,7 +512,7 @@ const MODE_LABEL = {bank:'Bank/GPay',cash:'Cash',cc:'Credit Card',mom:'Mom/Dad'}
 const STORAGE_KEY = 'tamanna_budget_v4';
 const PIN_KEY = 'tamanna_pin_v4';
 const DEFAULT_PIN = '7465';
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -584,8 +584,9 @@ function miniPinKey(d){
 function miniPinDel(){ if(miniPinBuffer.length){ miniPinBuffer=miniPinBuffer.slice(0,-1); updatePinDots('mpd',miniPinBuffer); } }
 function checkMiniPin(){
   if(miniPinBuffer===getPin()){
+    const cb=miniPinCallback;
     closeMiniPin();
-    if(miniPinCallback) miniPinCallback();
+    if(cb) setTimeout(cb, 50);
   } else {
     updatePinDots('mpd',miniPinBuffer,true);
     document.getElementById('mini-pin-error').textContent='Incorrect PIN';
