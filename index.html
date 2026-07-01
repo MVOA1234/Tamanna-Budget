@@ -512,7 +512,7 @@ const MODE_LABEL = {bank:'Bank/GPay',cash:'Cash',cc:'Credit Card',mom:'Mom/Dad'}
 const STORAGE_KEY = 'tamanna_budget_v4';
 const PIN_KEY = 'tamanna_pin_v4';
 const DEFAULT_PIN = '7465';
-const APP_VERSION = '2.3';
+const APP_VERSION = '2.4';
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -693,6 +693,7 @@ function addEntry(){
 }
 
 function deleteEntry(id){
+  if(!confirm('Delete this entry?')) return;
   store[viewKey].entries=store[viewKey].entries.filter(e=>e.id!==id);
   saveStore(); refreshAll(); renderLog(); toast('Deleted');
 }
