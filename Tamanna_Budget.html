@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<meta name="theme-color" content="#1a1714">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Tamanna — Budget</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+
+:root {
+  --bg:#f7f4f0; --surface:#fff; --surface2:#f0ece6; --border:#e0d9d0;
+  --text:#1a1714; --muted:#8a8078;
+  --accent:#c96a3a; --accent-light:#f5e8df;
+  --green:#3a8c5c; --green-light:#e2f0e9;
+  --red:#c03a3a; --red-light:#f5e2e2;
+  --yellow:#b88a00; --yellow-light:#fdf4d8;
+  --blue:#2a6cb0; --blue-light:#e2ecf8;
+  --purple:#7a3aaa; --purple-light:#f0e2f8;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+  --nav-h:64px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);font-family:var(--sans);color:var(--text);display:flex;flex-direction:column}
+
+/* ══════════════════════════════
+   PIN SCREEN
+══════════════════════════════ */
+#pin-screen{
+  position:fixed;inset:0;z-index:200;
+  background:var(--text);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:0;
+  padding:32px 24px;
+  padding-top:calc(32px + var(--safe-t));
+}
+#pin-screen h1{font-family:var(--mono);font-weight:300;font-size:1.2rem;color:#fff;margin-bottom:6px;letter-spacing:-0.01em}
+#pin-screen h1 span{color:var(--accent);font-style:italic}
+#pin-screen .pin-sub{font-family:var(--mono);font-size:0.68rem;color:#888;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:36px}
+.pin-dots{display:flex;gap:14px;margin-bottom:32px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid #555;transition:all 0.15s}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.pin-dot.error{background:var(--red);border-color:var(--red)}
+.pin-error{font-family:var(--mono);font-size:0.72rem;color:var(--red);height:18px;margin-bottom:16px;text-align:center}
+.pin-pad{display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(4,72px);gap:12px}
+.pin-key{width:72px;height:72px;border-radius:50%;border:1.5px solid #333;background:none;color:#fff;font-family:var(--sans);font-size:1.3rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.1s}
+.pin-key:active{background:#333}
+.pin-key.zero{grid-column:2}
+.pin-key.del{grid-column:3;font-size:1rem;color:#888;border-color:transparent}
+
+/* ══════════════════════════════
+   APP SHELL
+══════════════════════════════ */
+#app{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.app-header{background:var(--text);color:#fff;padding:10px 16px;padding-top:calc(10px + var(--safe-t));flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.app-header h1{font-family:var(--mono);font-weight:300;font-size:0.95rem;letter-spacing:-0.01em;white-space:nowrap}
+.app-header h1 span{color:var(--accent);font-style:italic}
+.month-nav{display:flex;align-items:center;gap:6px}
+.mnav-btn{background:none;border:none;color:#aaa;font-size:1.1rem;cursor:pointer;padding:4px 6px;line-height:1}
+.mnav-btn:disabled{opacity:0.25;cursor:default}
+.mnav-label{font-family:var(--mono);font-size:0.7rem;color:#ddd;letter-spacing:0.06em;white-space:nowrap}
+
+.page{display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h) + var(--safe-b) + 16px)}
+.page.active{display:block}
+
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + var(--safe-b));background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:var(--safe-b)}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--muted);font-size:0.55rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em;border:none;background:none;padding:8px 2px}
+.nav-tab .icon{font-size:1.2rem;line-height:1}
+.nav-tab.active{color:var(--accent)}
+
+/* ══════════════════════════════
+   DASHBOARD
+══════════════════════════════ */
+.summary-strip{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.sum-card{background:var(--surface);padding:11px 14px}
+.sum-card .lbl{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-family:var(--mono);margin-bottom:3px}
+.sum-card .val{font-family:var(--mono);font-size:1.05rem;font-weight:500}
+.val.pos{color:var(--green)} .val.neg{color:var(--red)} .val.accent{color:var(--accent)}
+
+.rr-banner{margin:10px 14px 0;border-radius:10px;padding:9px 13px;display:flex;align-items:center;gap:9px;font-size:0.76rem}
+.rr-banner.ok{background:var(--green-light);color:var(--green)}
+.rr-banner.warn{background:var(--yellow-light);color:var(--yellow)}
+.rr-banner.over{background:var(--red-light);color:var(--red)}
+.rr-banner .ri{font-size:1.1rem;flex-shrink:0}
+.rr-banner .rt{flex:1;line-height:1.35}
+.rr-banner .rt strong{display:block;font-size:0.7rem;margin-bottom:1px}
+
+.mode-row{display:flex;gap:8px;padding:10px 14px 0;overflow-x:auto;scrollbar-width:none}
+.mode-row::-webkit-scrollbar{display:none}
+.mode-chip{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 11px;font-family:var(--mono);font-size:0.63rem}
+.mode-chip .mc-l{color:var(--muted);margin-bottom:2px}
+.mode-chip .mc-v{font-size:0.85rem;font-weight:500}
+.mode-chip.bank .mc-v{color:var(--blue)} .mode-chip.cash .mc-v{color:var(--green)}
+.mode-chip.cc .mc-v{color:var(--purple)} .mode-chip.mom .mc-v{color:var(--accent)}
+
+.sec-head{padding:14px 14px 7px;font-family:var(--mono);font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sec-head::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.cat-list{padding:0 14px;display:flex;flex-direction:column;gap:7px}
+.cat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.cat-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.cat-name{font-size:0.78rem;font-weight:500}
+.cat-pct{font-family:var(--mono);font-size:0.68rem;color:var(--muted)}
+.cat-bar-wrap{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:5px}
+.cat-bar{height:100%;border-radius:2px;transition:width 0.3s}
+.cat-nums{display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.66rem;color:var(--muted)}
+.cat-nums .sv{color:var(--text);font-weight:500}
+.cat-flag{font-size:0.63rem;margin-top:3px;padding:2px 6px;border-radius:4px;display:inline-block}
+.cat-flag.warn{background:var(--yellow-light);color:var(--yellow)}
+.cat-flag.over{background:var(--red-light);color:var(--red)}
+
+/* ══════════════════════════════
+   FAB
+══════════════════════════════ */
+.fab{position:fixed;bottom:calc(var(--nav-h) + var(--safe-b) + 13px);right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:1.5rem;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(201,106,58,0.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform 0.15s}
+.fab:active{transform:scale(0.93)}
+
+/* ══════════════════════════════
+   MODAL SHEET
+══════════════════════════════ */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:60;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:0 0 calc(20px + var(--safe-b));width:100%;max-height:92vh;overflow-y:auto;animation:slideUp 0.25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 14px}
+.modal-title{font-family:var(--mono);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);padding:0 18px 11px;border-bottom:1px solid var(--border)}
+.form-row{padding:12px 18px;border-bottom:1px solid var(--border)}
+.form-row label{display:block;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-family:var(--mono);margin-bottom:5px}
+.form-row input,.form-row select{width:100%;font-family:var(--sans);font-size:1rem;border:1px solid var(--border);border-radius:8px;padding:9px 11px;background:var(--bg);color:var(--text);outline:none;-webkit-appearance:none}
+.form-row input:focus,.form-row select:focus{border-color:var(--accent);background:#fff}
+.mode-selector{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.mode-btn{padding:9px 7px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-family:var(--sans);font-size:0.75rem;cursor:pointer;text-align:center;color:var(--muted);transition:all 0.15s}
+.mode-btn.sel-bank{border-color:var(--blue);background:var(--blue-light);color:var(--blue);font-weight:600}
+.mode-btn.sel-cash{border-color:var(--green);background:var(--green-light);color:var(--green);font-weight:600}
+.mode-btn.sel-cc{border-color:var(--purple);background:var(--purple-light);color:var(--purple);font-weight:600}
+.mode-btn.sel-mom{border-color:var(--accent);background:var(--accent-light);color:var(--accent);font-weight:600}
+.modal-actions{padding:14px 18px 0;display:flex;gap:10px}
+.btn{flex:1;padding:12px;border-radius:10px;border:none;font-family:var(--sans);font-size:0.88rem;font-weight:600;cursor:pointer;transition:opacity 0.15s}
+.btn:active{opacity:0.8}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{background:var(--surface2);color:var(--text)}
+.btn-danger{background:var(--red-light);color:var(--red)}
+
+/* ══════════════════════════════
+   DAILY LOG
+══════════════════════════════ */
+.day-group{margin:0 14px 9px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+.day-header{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.day-num{font-family:var(--mono);font-size:0.72rem;font-weight:500}
+.day-num.tm{color:var(--accent)}
+.day-bal{font-family:var(--mono);font-size:0.74rem;font-weight:500}
+.day-bal.pos{color:var(--green)} .day-bal.neg{color:var(--red)}
+.entry-row{display:flex;align-items:center;padding:8px 13px;border-bottom:1px solid var(--border);gap:9px}
+.entry-row:last-child{border-bottom:none}
+.edot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.edot.bank{background:var(--blue)} .edot.cash{background:var(--green)} .edot.cc{background:var(--purple)} .edot.mom{background:var(--accent)} .edot.in{background:var(--green)}
+.ecat{flex:1;font-size:0.76rem}
+.ecat small{display:block;font-size:0.6rem;color:var(--muted);font-family:var(--mono)}
+.eamt{font-family:var(--mono);font-size:0.82rem;font-weight:500}
+.eamt.income{color:var(--green)}
+.edel{color:var(--muted);font-size:0.95rem;cursor:pointer;padding:2px 6px;border:none;background:none}
+.empty-day{padding:12px;font-size:0.72rem;color:var(--muted);font-family:var(--mono);text-align:center}
+
+/* ══════════════════════════════
+   BUDGET PAGE
+══════════════════════════════ */
+.budget-status-banner{margin:0 14px 10px;padding:10px 14px;border-radius:10px;font-size:0.76rem;display:flex;align-items:center;gap:10px}
+.budget-status-banner.frozen{background:var(--blue-light);color:var(--blue)}
+.budget-status-banner.open{background:var(--green-light);color:var(--green)}
+.budget-cards{padding:0 14px;display:flex;flex-direction:column;gap:7px}
+.budget-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.budget-card-top{display:flex;align-items:center;gap:10px}
+.budget-card label{flex:1;font-size:0.78rem;font-weight:500}
+.budget-card input{width:110px;font-family:var(--mono);font-size:0.88rem;border:1px solid var(--border);border-radius:6px;padding:5px 8px;text-align:right;background:var(--bg);color:var(--text);outline:none}
+.budget-card input:focus{border-color:var(--accent)}
+.budget-card input:disabled{background:var(--surface2);color:var(--muted);border-color:transparent}
+
+/* ══════════════════════════════
+   HISTORY PAGE
+══════════════════════════════ */
+.hist-list{padding:0 14px;display:flex;flex-direction:column;gap:8px}
+.hist-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.hist-card-head{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--surface2)}
+.hist-card-head .hm{font-family:var(--mono);font-size:0.82rem;font-weight:500}
+.hist-card-head .hs{font-family:var(--mono);font-size:0.72rem}
+.hist-card-head .hs.green{color:var(--green)} .hist-card-head .hs.yellow{color:var(--yellow)} .hist-card-head .hs.red{color:var(--red)}
+.hist-card-body{display:none;border-top:1px solid var(--border)}
+.hist-card-body.open{display:block}
+.me-overall{margin:12px 14px;border-radius:10px;padding:12px 14px;border:2px solid;text-align:center}
+.me-overall.green{background:var(--green-light);border-color:var(--green);color:var(--green)}
+.me-overall.yellow{background:var(--yellow-light);border-color:var(--yellow);color:var(--yellow)}
+.me-overall.red{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.me-overall .me-icon{font-size:1.6rem;margin-bottom:3px}
+.me-overall .me-title{font-size:0.88rem;font-weight:700;margin-bottom:2px}
+.me-overall .me-sub{font-family:var(--mono);font-size:0.68rem;opacity:0.8}
+.hist-cat-row{display:flex;align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);gap:8px}
+.hist-cat-row:last-child{border-bottom:none}
+.hcdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hcdot.green{background:var(--green)} .hcdot.yellow{background:var(--yellow)} .hcdot.red{background:var(--red)}
+.hcn{flex:1;font-size:0.76rem}
+.hca{font-family:var(--mono);font-size:0.68rem;color:var(--muted)}
+.hcp{font-family:var(--mono);font-size:0.68rem;font-weight:600;width:40px;text-align:right}
+.hcp.green{color:var(--green)} .hcp.yellow{color:var(--yellow)} .hcp.red{color:var(--red)}
+
+/* ══════════════════════════════
+   SETTINGS PAGE
+══════════════════════════════ */
+.settings-list{padding:0 14px;display:flex;flex-direction:column;gap:10px}
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.settings-row{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.settings-row:last-child{border-bottom:none}
+.settings-row .sr-label{font-size:0.82rem;font-weight:500}
+.settings-row .sr-sub{font-size:0.68rem;color:var(--muted);margin-top:2px;font-family:var(--mono)}
+.settings-row .sr-action{color:var(--accent);font-size:0.8rem;font-weight:600;cursor:pointer;border:none;background:none;font-family:var(--sans)}
+.pin-change-form{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.pin-change-form input{font-family:var(--mono);font-size:1rem;border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--bg);color:var(--text);outline:none;letter-spacing:0.2em;-webkit-appearance:none}
+.pin-change-form input:focus{border-color:var(--accent)}
+
+/* ══════════════════════════════
+   MINI PIN MODAL (for re-auth)
+══════════════════════════════ */
+.mini-pin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:150;align-items:center;justify-content:center;padding:24px}
+.mini-pin-overlay.open{display:flex}
+.mini-pin-sheet{background:var(--surface);border-radius:20px;padding:24px 20px 20px;width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.mini-pin-sheet h3{font-size:0.9rem;font-weight:600;color:var(--text)}
+.mini-pin-sheet p{font-size:0.74rem;color:var(--muted);text-align:center;line-height:1.4}
+.mini-pin-dots{display:flex;gap:12px}
+.mini-pin-dot{width:12px;height:12px;border-radius:50%;border:2px solid #ccc;transition:all 0.15s}
+.mini-pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.mini-pin-dot.error{background:var(--red);border-color:var(--red)}
+.mini-pin-error{font-family:var(--mono);font-size:0.68rem;color:var(--red);height:16px;text-align:center}
+.mini-pin-pad{display:grid;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(4,60px);gap:10px}
+.mini-pin-key{width:60px;height:60px;border-radius:50%;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--sans);font-size:1.1rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.1s}
+.mini-pin-key:active{background:var(--surface2)}
+.mini-pin-key.zero{grid-column:2}
+.mini-pin-key.del{grid-column:3;font-size:0.9rem;color:var(--muted);border-color:transparent;background:none}
+.mini-pin-cancel{font-size:0.8rem;color:var(--muted);cursor:pointer;border:none;background:none;font-family:var(--sans);padding:4px}
+
+/* ══════════════════════════════
+   ALERT DRAWER
+══════════════════════════════ */
+.alert-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:80;align-items:flex-end}
+.alert-overlay.open{display:flex}
+.alert-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:0 0 calc(24px + var(--safe-b));width:100%;max-height:80vh;overflow-y:auto;animation:slideUp 0.25s ease}
+.alert-head{padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.alert-head h2{font-size:0.95rem;font-weight:600}
+.alert-close{font-size:1.2rem;cursor:pointer;color:var(--muted);background:none;border:none}
+.alert-item{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:11px;align-items:flex-start}
+.alert-item:last-child{border-bottom:none}
+.alert-item.sev-warn{border-left:3px solid var(--yellow)}
+.alert-item.sev-over{border-left:3px solid var(--red)}
+.a-icon{font-size:1.2rem;flex-shrink:0}
+.a-body strong{display:block;font-size:0.85rem;margin-bottom:1px}
+.a-body span{font-size:0.72rem;color:var(--muted);font-family:var(--mono)}
+
+/* ══════════════════════════════
+   TOAST
+══════════════════════════════ */
+#toast{position:fixed;bottom:calc(var(--nav-h) + var(--safe-b) + 10px);left:50%;transform:translateX(-50%);background:var(--text);color:#fff;font-family:var(--mono);font-size:0.75rem;padding:8px 16px;border-radius:20px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:100;white-space:nowrap}
+#toast.show{opacity:1}
+.scroll-pad{height:14px}
+</style>
+</head>
+<body>
+
+<!-- ══════ PIN SCREEN ══════ -->
+<div id="pin-screen">
+  <h1>Tamanna — <span>Budget</span></h1>
+  <div class="pin-sub">Enter PIN to continue</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-pad">
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key zero" onclick="pinKey('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+</div>
+
+<!-- ══════ APP ══════ -->
+<div id="app" style="display:none">
+  <div class="app-header">
+    <h1>Tamanna — <span id="hdr-month">Budget</span></h1>
+    <div class="month-nav">
+      <button class="mnav-btn" id="btn-prev" onclick="navMonth(-1)">‹</button>
+      <div class="mnav-label" id="mnav-label"></div>
+      <button class="mnav-btn" id="btn-next" onclick="navMonth(1)">›</button>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="page active" id="page-dash">
+    <div class="summary-strip">
+      <div class="sum-card"><div class="lbl">Cash In</div><div class="val accent" id="s-cashin">₹0</div></div>
+      <div class="sum-card"><div class="lbl">Spent</div><div class="val" id="s-spent">₹0</div></div>
+      <div class="sum-card"><div class="lbl">Balance</div><div class="val" id="s-balance">₹0</div></div>
+      <div class="sum-card"><div class="lbl">Budget Left</div><div class="val" id="s-budgetleft">₹0</div></div>
+    </div>
+    <div class="rr-banner ok" id="rr-banner">
+      <div class="ri">✅</div><div class="rt"><strong>On Track</strong>Expenses within budget run rate.</div>
+    </div>
+    <div class="mode-row">
+      <div class="mode-chip bank"><div class="mc-l">Bank/GPay</div><div class="mc-v" id="mt-bank">₹0</div></div>
+      <div class="mode-chip cash"><div class="mc-l">Cash</div><div class="mc-v" id="mt-cash">₹0</div></div>
+      <div class="mode-chip cc"><div class="mc-l">Credit Card</div><div class="mc-v" id="mt-cc">₹0</div></div>
+      <div class="mode-chip mom"><div class="mc-l">Mom/Dad</div><div class="mc-v" id="mt-mom">₹0</div></div>
+    </div>
+    <div class="sec-head">Category Status</div>
+    <div class="cat-list" id="cat-list"></div>
+    <div class="scroll-pad"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="page" id="page-log">
+    <div class="sec-head" style="padding-top:14px">Daily Entries</div>
+    <div id="daily-log"></div>
+    <div class="scroll-pad"></div>
+  </div>
+
+  <!-- Budget -->
+  <div class="page" id="page-budget">
+    <div class="sec-head" style="padding-top:14px">Monthly Budgets</div>
+    <div id="budget-status-wrap"></div>
+    <div class="budget-cards" id="budget-cards"></div>
+    <div style="padding:14px;display:flex;flex-direction:column;gap:10px" id="budget-actions"></div>
+    <div class="scroll-pad"></div>
+  </div>
+
+  <!-- History -->
+  <div class="page" id="page-hist">
+    <div class="sec-head" style="padding-top:14px">Month-end Summaries</div>
+    <div class="hist-list" id="hist-list"></div>
+    <div class="scroll-pad"></div>
+  </div>
+
+  <!-- Settings -->
+  <div class="page" id="page-settings">
+    <div class="sec-head" style="padding-top:14px">Settings</div>
+    <div class="settings-list">
+      <div class="settings-card">
+        <div class="settings-row">
+          <div><div class="sr-label">Change PIN</div><div class="sr-sub">Update your 4-digit app PIN</div></div>
+          <button class="sr-action" onclick="togglePinChange()">Change</button>
+        </div>
+        <div id="pin-change-section" style="display:none">
+          <div class="pin-change-form">
+            <input type="password" inputmode="numeric" maxlength="4" id="pc-current" placeholder="Current PIN">
+            <input type="password" inputmode="numeric" maxlength="4" id="pc-new" placeholder="New PIN (4 digits)">
+            <input type="password" inputmode="numeric" maxlength="4" id="pc-confirm" placeholder="Confirm new PIN">
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-ghost" onclick="togglePinChange()">Cancel</button>
+              <button class="btn btn-primary" onclick="changePin()">Save PIN</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div><div class="sr-label">App Version</div><div class="sr-sub" id="app-version-label">—</div></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="sr-label">Data stored</div><div class="sr-sub" id="data-size-label">—</div></div>
+        </div>
+      </div>
+      <div class="settings-card">
+        <div class="settings-row" style="cursor:pointer" onclick="exportData()">
+          <div><div class="sr-label">Export all data</div><div class="sr-sub">Download as JSON backup</div></div>
+          <span style="color:var(--muted);font-size:1.1rem">⬇</span>
+        </div>
+      </div>
+    </div>
+    <div class="scroll-pad"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-tab active" onclick="showPage('dash',this)"><span class="icon">📊</span>Dashboard</button>
+    <button class="nav-tab" onclick="showPage('log',this)"><span class="icon">📋</span>Log</button>
+    <button class="nav-tab" onclick="showPage('budget',this)"><span class="icon">⚙️</span>Budgets</button>
+    <button class="nav-tab" onclick="showPage('hist',this)"><span class="icon">🗂</span>History</button>
+    <button class="nav-tab" onclick="showPage('settings',this)"><span class="icon">🔧</span>Settings</button>
+  </nav>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="openEntry()">＋</button>
+
+<!-- Entry Modal -->
+<div class="modal-overlay" id="entry-modal" onclick="maybeClose(event,'entry-modal')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">Add Entry</div>
+    <div class="form-row">
+      <label>Type</label>
+      <div style="display:flex;gap:8px">
+        <button class="mode-btn" style="flex:1" id="type-in" onclick="setEntryType('in')">💰 Cash In</button>
+        <button class="mode-btn" style="flex:1" id="type-exp" onclick="setEntryType('exp')">💸 Expense</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Day</label>
+      <input type="number" id="entry-day" min="1" max="31" placeholder="e.g. 15">
+    </div>
+    <div class="form-row">
+      <label>Amount (₹)</label>
+      <input type="text" inputmode="numeric" id="entry-amt" placeholder="0" oninput="formatOnInput(this)">
+    </div>
+    <div class="form-row" id="cat-row">
+      <label>Category</label>
+      <select id="entry-cat"></select>
+    </div>
+    <div class="form-row">
+      <label>Payment Mode</label>
+      <div class="mode-selector">
+        <button class="mode-btn" id="mb-bank" onclick="selMode('bank')">🏦 Bank/GPay</button>
+        <button class="mode-btn" id="mb-cash" onclick="selMode('cash')">💵 Cash</button>
+        <button class="mode-btn" id="mb-cc"   onclick="selMode('cc')">💳 Credit Card</button>
+        <button class="mode-btn" id="mb-mom"  onclick="selMode('mom')" style="display:none">👩‍👧 Mom/Dad</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Note (optional)</label>
+      <input type="text" id="entry-note" placeholder="e.g. petrol, Zomato order…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('entry-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addEntry()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mini PIN Modal (re-auth for budget edit) -->
+<div class="mini-pin-overlay" id="mini-pin-overlay" onclick="maybeCloseMiniPin(event)">
+  <div class="mini-pin-sheet" onclick="event.stopPropagation()">
+    <h3>🔒 Confirm PIN</h3>
+    <p id="mini-pin-reason">Enter your PIN to edit frozen budgets.</p>
+    <div class="mini-pin-dots">
+      <div class="mini-pin-dot" id="mpd0"></div>
+      <div class="mini-pin-dot" id="mpd1"></div>
+      <div class="mini-pin-dot" id="mpd2"></div>
+      <div class="mini-pin-dot" id="mpd3"></div>
+    </div>
+    <div class="mini-pin-error" id="mini-pin-error"></div>
+    <div class="mini-pin-pad">
+      <button class="mini-pin-key" onclick="miniPinKey('1')">1</button>
+      <button class="mini-pin-key" onclick="miniPinKey('2')">2</button>
+      <button class="mini-pin-key" onclick="miniPinKey('3')">3</button>
+      <button class="mini-pin-key" onclick="miniPinKey('4')">4</button>
+      <button class="mini-pin-key" onclick="miniPinKey('5')">5</button>
+      <button class="mini-pin-key" onclick="miniPinKey('6')">6</button>
+      <button class="mini-pin-key" onclick="miniPinKey('7')">7</button>
+      <button class="mini-pin-key" onclick="miniPinKey('8')">8</button>
+      <button class="mini-pin-key" onclick="miniPinKey('9')">9</button>
+      <button class="mini-pin-key zero" onclick="miniPinKey('0')">0</button>
+      <button class="mini-pin-key del" onclick="miniPinDel()">⌫</button>
+    </div>
+    <button class="mini-pin-cancel" onclick="closeMiniPin()">Cancel</button>
+  </div>
+</div>
+
+<!-- Alert Drawer -->
+<div class="alert-overlay" id="alert-overlay" onclick="maybeClose(event,'alert-overlay')">
+  <div class="alert-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle" style="margin-bottom:0"></div>
+    <div class="alert-head"><h2>⚠️ Budget Alerts</h2><button class="alert-close" onclick="closeModal('alert-overlay')">✕</button></div>
+    <div id="alert-list"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════
+const CATEGORIES = [
+  {key:'fuel',     label:'Fuel'},
+  {key:'phone',    label:'Phone'},
+  {key:'zomato',   label:'Zomato'},
+  {key:'appsub',   label:'App Subscription'},
+  {key:'nails',    label:'Nails'},
+  {key:'bounce',   label:'Bounce'},
+  {key:'shopping', label:'Shopping'},
+  {key:'social',   label:'Socializing'},
+  {key:'ciggs',    label:'Ciggs / Patch'},
+  {key:'shampoo',  label:'Shampoo / Conditioner'},
+  {key:'bodywash', label:'Body Wash / Grooming'},
+  {key:'skincare', label:'Skin Care'},
+  {key:'porter',   label:'Porter'},
+  {key:'baileys',  label:'Baileys'},
+  {key:'coffee',   label:'Coffee / Blinket'},
+];
+const MODE_LABEL = {bank:'Bank/GPay',cash:'Cash',cc:'Credit Card',mom:'Mom/Dad'};
+const STORAGE_KEY = 'tamanna_budget_v4';
+const PIN_KEY = 'tamanna_pin_v4';
+const DEFAULT_PIN = '7465';
+const APP_VERSION = '2.0';
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+const toKey = (y,m) => `${y}-${String(m+1).padStart(2,'0')}`;
+const keyLabel = k => { const [y,m]=k.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'}); };
+const keyShort = k => { const [y,m]=k.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'}); };
+const daysInMonth = k => { const [y,m]=k.split('-'); return new Date(+y,+m,0).getDate(); };
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const parseNum = v => { const n=parseFloat(String(v).replace(/[^0-9.-]/g,'')); return isNaN(n)?0:n; };
+const fmtN = n => '₹'+Math.round(Math.abs(n)).toLocaleString('en-IN');
+const fmtBal = n => (n<0?'−':'')+'₹'+Math.round(Math.abs(n)).toLocaleString('en-IN');
+function formatOnInput(el){ const r=parseNum(el.value); el.value=r?r.toLocaleString('en-IN'):''; }
+
+// ═══════════════════════════════════════════
+// PIN — MAIN SCREEN
+// ═══════════════════════════════════════════
+let pinBuffer = '';
+function getPin(){ return localStorage.getItem(PIN_KEY)||DEFAULT_PIN; }
+
+function pinKey(d){
+  if(pinBuffer.length>=4) return;
+  pinBuffer+=d;
+  updatePinDots('pd',pinBuffer);
+  if(pinBuffer.length===4) setTimeout(checkPin,120);
+}
+function pinDel(){ if(pinBuffer.length) { pinBuffer=pinBuffer.slice(0,-1); updatePinDots('pd',pinBuffer); } }
+function updatePinDots(prefix,buf,error=false){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById(prefix+i);
+    d.classList.toggle('filled',i<buf.length);
+    d.classList.toggle('error',error&&i<4);
+  }
+}
+function checkPin(){
+  if(pinBuffer===getPin()){
+    document.getElementById('pin-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    document.getElementById('fab').style.display='flex';
+    initApp();
+  } else {
+    updatePinDots('pd',pinBuffer,true);
+    document.getElementById('pin-error').textContent='Incorrect PIN';
+    setTimeout(()=>{ pinBuffer=''; updatePinDots('pd',''); document.getElementById('pin-error').textContent=''; },900);
+  }
+}
+
+// ═══════════════════════════════════════════
+// MINI PIN (re-auth)
+// ═══════════════════════════════════════════
+let miniPinBuffer='';
+let miniPinCallback=null;
+
+function openMiniPin(reason, callback){
+  miniPinBuffer=''; miniPinCallback=callback;
+  updatePinDots('mpd','');
+  document.getElementById('mini-pin-error').textContent='';
+  document.getElementById('mini-pin-reason').textContent=reason;
+  document.getElementById('mini-pin-overlay').classList.add('open');
+}
+function closeMiniPin(){ document.getElementById('mini-pin-overlay').classList.remove('open'); miniPinBuffer=''; miniPinCallback=null; }
+function maybeCloseMiniPin(e){ if(e.target===document.getElementById('mini-pin-overlay')) closeMiniPin(); }
+function miniPinKey(d){
+  if(miniPinBuffer.length>=4) return;
+  miniPinBuffer+=d;
+  updatePinDots('mpd',miniPinBuffer);
+  if(miniPinBuffer.length===4) setTimeout(checkMiniPin,120);
+}
+function miniPinDel(){ if(miniPinBuffer.length){ miniPinBuffer=miniPinBuffer.slice(0,-1); updatePinDots('mpd',miniPinBuffer); } }
+function checkMiniPin(){
+  if(miniPinBuffer===getPin()){
+    closeMiniPin();
+    if(miniPinCallback) miniPinCallback();
+  } else {
+    updatePinDots('mpd',miniPinBuffer,true);
+    document.getElementById('mini-pin-error').textContent='Incorrect PIN';
+    setTimeout(()=>{ miniPinBuffer=''; updatePinDots('mpd',''); document.getElementById('mini-pin-error').textContent=''; },900);
+  }
+}
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let store={};
+let viewKey='';
+let currentKey='';
+
+function loadStore(){ try{ const r=localStorage.getItem(STORAGE_KEY); if(r) store=JSON.parse(r); }catch(e){ store={}; } }
+function saveStore(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(store)); }
+
+function ensureMonth(key){
+  if(!store[key]) store[key]={budgets:{},entries:[],frozen:false};
+  CATEGORIES.forEach(c=>{ if(store[key].budgets[c.key]==null) store[key].budgets[c.key]=0; });
+  if(!store[key].entries) store[key].entries=[];
+}
+
+function computeCurrentKey(){ const n=new Date(); return toKey(n.getFullYear(),n.getMonth()); }
+
+function lockPastMonths(){
+  // months before current are frozen permanently (entries locked)
+  Object.keys(store).forEach(k=>{ if(k<currentKey) store[k].entryLocked=true; });
+}
+
+// ═══════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════
+function allMonthKeys(){ const keys=Object.keys(store); if(!keys.includes(currentKey)) keys.push(currentKey); return keys.sort(); }
+
+function navMonth(dir){
+  const keys=allMonthKeys(); const idx=keys.indexOf(viewKey); const ni=idx+dir;
+  if(ni<0||ni>=keys.length) return;
+  viewKey=keys[ni]; ensureMonth(viewKey); refreshAll();
+}
+
+function updateMonthNav(){
+  const keys=allMonthKeys(); const idx=keys.indexOf(viewKey);
+  document.getElementById('btn-prev').disabled=(idx<=0);
+  document.getElementById('btn-next').disabled=(idx>=keys.length-1);
+  document.getElementById('mnav-label').textContent=keyShort(viewKey);
+  document.getElementById('hdr-month').textContent=keyShort(viewKey);
+  // FAB only for current month
+  document.getElementById('fab').style.display=(viewKey===currentKey)?'flex':'none';
+}
+
+function showPage(name,tab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(tab) tab.classList.add('active');
+  if(name==='log') renderLog();
+  if(name==='budget') renderBudgets();
+  if(name==='hist') renderHistory();
+  if(name==='settings') renderSettings();
+}
+
+// ═══════════════════════════════════════════
+// ENTRY MODAL
+// ═══════════════════════════════════════════
+let entryType='exp', entryMode='bank';
+
+function openEntry(){
+  document.getElementById('entry-modal').classList.add('open');
+  setEntryType('exp');
+  const now=new Date();
+  document.getElementById('entry-day').value=(viewKey===currentKey)?now.getDate():'';
+  document.getElementById('entry-amt').value='';
+  document.getElementById('entry-note').value='';
+  selMode('bank');
+}
+function maybeClose(e,id){ if(e.target===document.getElementById(id)) closeModal(id); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function setEntryType(type){
+  entryType=type;
+  document.getElementById('type-in').className='mode-btn'+(type==='in'?' sel-cash':'');
+  document.getElementById('type-exp').className='mode-btn'+(type==='exp'?' sel-bank':'');
+  document.getElementById('mb-mom').style.display=type==='exp'?'':'none';
+  document.getElementById('cat-row').style.display=type==='exp'?'':'none';
+  document.getElementById('modal-title').textContent=type==='in'?'Add Cash In':'Add Expense';
+}
+function selMode(m){
+  entryMode=m;
+  ['bank','cash','cc','mom'].forEach(k=>{ const b=document.getElementById('mb-'+k); if(b) b.className='mode-btn'+(k===m?` sel-${k}`:''); });
+}
+
+function addEntry(){
+  const day=parseInt(document.getElementById('entry-day').value);
+  const amt=parseNum(document.getElementById('entry-amt').value);
+  const cat=entryType==='exp'?document.getElementById('entry-cat').value:'';
+  const note=document.getElementById('entry-note').value.trim();
+  const maxDay=daysInMonth(viewKey);
+  if(!day||day<1||day>maxDay){ toast(`Enter a valid day (1–${maxDay})`); return; }
+  if(!amt){ toast('Enter an amount'); return; }
+  if(entryType==='exp'&&!cat){ toast('Select a category'); return; }
+  store[viewKey].entries.push({id:uid(),day,type:entryType,cat,amount:amt,mode:entryMode,note});
+  saveStore(); refreshAll(); renderLog(); closeModal('entry-modal'); toast('Entry added ✓');
+}
+
+function deleteEntry(id){
+  store[viewKey].entries=store[viewKey].entries.filter(e=>e.id!==id);
+  saveStore(); refreshAll(); renderLog(); toast('Deleted');
+}
+
+function buildCatSelect(){
+  const sel=document.getElementById('entry-cat');
+  sel.innerHTML='<option value="">-- choose --</option>';
+  CATEGORIES.forEach(c=>{ const o=document.createElement('option'); o.value=c.key; o.textContent=c.label; sel.appendChild(o); });
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD RECALC
+// ═══════════════════════════════════════════
+function recalc(){
+  const md=store[viewKey];
+  const budgets=md.budgets; const entries=md.entries||[];
+  const days=daysInMonth(viewKey);
+  const now=new Date();
+  const isCurrentMonth=(viewKey===currentKey);
+  const daysElapsed=isCurrentMonth?now.getDate():days;
+
+  let totalIn=0,totalSpent=0;
+  const modeTotals={bank:0,cash:0,cc:0,mom:0};
+  const catSpent={}; CATEGORIES.forEach(c=>catSpent[c.key]=0);
+  entries.forEach(e=>{
+    if(e.type==='in'){ totalIn+=e.amount; if(modeTotals[e.mode]!=null) modeTotals[e.mode]+=e.amount; }
+    else { totalSpent+=e.amount; if(catSpent[e.cat]!=null) catSpent[e.cat]+=e.amount; if(modeTotals[e.mode]!=null) modeTotals[e.mode]+=e.amount; }
+  });
+
+  const totalBudget=CATEGORIES.reduce((s,c)=>s+(budgets[c.key]||0),0);
+  const balance=totalIn-totalSpent; const budgetLeft=totalBudget-totalSpent;
+
+  document.getElementById('s-cashin').textContent=fmtN(totalIn);
+  document.getElementById('s-spent').textContent=fmtN(totalSpent);
+  const balEl=document.getElementById('s-balance');
+  balEl.textContent=fmtBal(balance); balEl.className='val '+(balance>=0?'pos':'neg');
+  const blEl=document.getElementById('s-budgetleft');
+  blEl.textContent=fmtBal(budgetLeft); blEl.className='val '+(budgetLeft>=0?'pos':'neg');
+  ['bank','cash','cc','mom'].forEach(m=>document.getElementById('mt-'+m).textContent=fmtN(modeTotals[m]));
+
+  // Run rate
+  const budgetRR=totalBudget>0?(totalBudget/days)*daysElapsed:0;
+  const overPct=budgetRR>0?(totalSpent-budgetRR)/budgetRR:0;
+  const banner=document.getElementById('rr-banner');
+  if(!totalBudget||!totalSpent){
+    banner.className='rr-banner ok';
+    banner.innerHTML=`<div class="ri">✅</div><div class="rt"><strong>On Track</strong>No data yet.</div>`;
+  } else if(overPct<=0){
+    banner.className='rr-banner ok';
+    banner.innerHTML=`<div class="ri">✅</div><div class="rt"><strong>On Track</strong>Spent ${fmtN(totalSpent)} vs run rate ${fmtN(budgetRR)}.</div>`;
+  } else if(overPct<=0.10){
+    banner.className='rr-banner warn';
+    banner.innerHTML=`<div class="ri">⚠️</div><div class="rt"><strong>Young Lady, your expenses are running a bit high</strong>+${Math.round(overPct*100)}% above daily run rate.</div>`;
+  } else {
+    banner.className='rr-banner over';
+    banner.innerHTML=`<div class="ri">🔴</div><div class="rt"><strong>Young Lady, your expenses are running very high</strong>+${Math.round(overPct*100)}% above daily run rate!</div>`;
+  }
+
+  // Category cards
+  const catList=document.getElementById('cat-list'); catList.innerHTML='';
+  CATEGORIES.forEach(c=>{
+    const budget=budgets[c.key]||0; const spent=catSpent[c.key]||0;
+    const catRR=budget>0?(budget/days)*daysElapsed:0;
+    const catOver=catRR>0?(spent-catRR)/catRR:0;
+    const pct=budget>0?Math.min(spent/budget*100,100):0;
+    const barColor=pct>=100?'var(--red)':pct>=80?'var(--yellow)':'var(--green)';
+    let flagHtml='';
+    if(budget>0&&catOver>0.10) flagHtml=`<span class="cat-flag over">🔴 Running very high (+${Math.round(catOver*100)}%)</span>`;
+    else if(budget>0&&catOver>0) flagHtml=`<span class="cat-flag warn">⚠️ Running a bit high (+${Math.round(catOver*100)}%)</span>`;
+    const div=document.createElement('div'); div.className='cat-card';
+    div.innerHTML=`<div class="cat-card-top"><div class="cat-name">${c.label}</div><div class="cat-pct">${budget>0?Math.round(pct)+'%':'—'}</div></div><div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%;background:${barColor}"></div></div><div class="cat-nums"><span class="sv">${fmtN(spent)}</span><span>${budget>0?'of '+fmtN(budget):'no budget set'}</span></div>${flagHtml}`;
+    catList.appendChild(div);
+  });
+
+  buildAlerts(overPct,catSpent,budgets,days,daysElapsed);
+}
+
+// ═══════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════
+function buildAlerts(overallPct,catSpent,budgets,days,daysElapsed){
+  const list=[];
+  if(overallPct>0.10) list.push({sev:'over',icon:'🔴',title:'Overall expenses running very high',sub:`+${Math.round(overallPct*100)}% above daily run rate`});
+  else if(overallPct>0) list.push({sev:'warn',icon:'⚠️',title:'Overall expenses running a bit high',sub:`+${Math.round(overallPct*100)}% above daily run rate`});
+  CATEGORIES.forEach(c=>{
+    const budget=budgets[c.key]||0; if(!budget) return;
+    const spent=catSpent[c.key]||0;
+    const rr=(budget/days)*daysElapsed; const op=rr>0?(spent-rr)/rr:0;
+    if(op>0.10) list.push({sev:'over',icon:'🔴',title:`${c.label} running very high`,sub:`Spent ${fmtN(spent)} vs run rate ${fmtN(rr)} (+${Math.round(op*100)}%)`});
+    else if(op>0) list.push({sev:'warn',icon:'⚠️',title:`${c.label} running a bit high`,sub:`Spent ${fmtN(spent)} vs run rate ${fmtN(rr)} (+${Math.round(op*100)}%)`});
+  });
+  window._alerts=list;
+}
+function showAlerts(){
+  const list=window._alerts||[]; if(!list.length) return;
+  document.getElementById('alert-list').innerHTML=list.map(a=>`<div class="alert-item sev-${a.sev}"><div class="a-icon">${a.icon}</div><div class="a-body"><strong>${a.title}</strong><span>${a.sub}</span></div></div>`).join('');
+  document.getElementById('alert-overlay').classList.add('open');
+}
+
+// ═══════════════════════════════════════════
+// LOG PAGE
+// ═══════════════════════════════════════════
+function renderLog(){
+  const container=document.getElementById('daily-log'); container.innerHTML='';
+  const md=store[viewKey]; const days=daysInMonth(viewKey);
+  const now=new Date(); const todayDay=(viewKey===currentKey)?now.getDate():null;
+  const dayMap={}; for(let d=1;d<=days;d++) dayMap[d]=[];
+  (md.entries||[]).forEach(e=>{ if(e.day>=1&&e.day<=days) dayMap[e.day].push(e); });
+  let runBal=0;
+  for(let d=1;d<=days;d++){
+    const de=dayMap[d]; let dayIn=0,daySpend=0;
+    de.forEach(e=>{ if(e.type==='in') dayIn+=e.amount; else daySpend+=e.amount; });
+    runBal+=dayIn-daySpend;
+    const dateStr=new Date(+viewKey.split('-')[0],+viewKey.split('-')[1]-1,d).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    const isToday=d===todayDay;
+    const group=document.createElement('div'); group.className='day-group';
+    group.innerHTML=`<div class="day-header"><div class="day-num ${isToday?'tm':''}">${dateStr}${isToday?' · Today':''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px"><div style="font-family:var(--mono);font-size:0.63rem;color:var(--muted)">${daySpend>0?'−'+fmtN(daySpend):''}</div><div class="day-bal ${runBal>=0?'pos':'neg'}">${fmtBal(runBal)}</div></div></div><div id="de-${d}"></div>`;
+    container.appendChild(group);
+    const ec=group.querySelector(`#de-${d}`);
+    if(!de.length){ ec.innerHTML='<div class="empty-day">No entries</div>'; }
+    else de.forEach(e=>{
+      const dotCls=e.type==='in'?'in':(e.mode||'cash');
+      const catLabel=e.type==='in'?'Cash In':(CATEGORIES.find(c=>c.key===e.cat)||{label:e.cat}).label;
+      const canDelete=viewKey===currentKey;
+      const row=document.createElement('div'); row.className='entry-row';
+      row.innerHTML=`<div class="edot ${dotCls}"></div><div class="ecat">${catLabel}<small>${MODE_LABEL[e.mode]||e.mode}${e.note?' · '+e.note:''}</small></div><div class="eamt ${e.type==='in'?'income':''}">${e.type==='in'?'+':'−'}${fmtN(e.amount)}</div>${canDelete?`<button class="edel" onclick="deleteEntry('${e.id}')">✕</button>`:''}`;
+      ec.appendChild(row);
+    });
+  }
+}
+
+// ═══════════════════════════════════════════
+// BUDGET PAGE
+// ═══════════════════════════════════════════
+function renderBudgets(){
+  const md=store[viewKey];
+  const frozen=md.frozen||false;
+  const isPast=viewKey<currentKey;
+
+  // Status banner
+  const sw=document.getElementById('budget-status-wrap'); sw.innerHTML='';
+  if(isPast){
+    sw.innerHTML=`<div class="budget-status-banner frozen" style="margin:10px 14px 10px">🔒 Past month — budgets locked.</div>`;
+  } else if(frozen){
+    sw.innerHTML=`<div class="budget-status-banner frozen" style="margin:10px 14px 10px">🔒 Budgets frozen for ${keyLabel(viewKey)}. Tap <strong style="margin-left:4px">Edit</strong> to unlock with PIN.</div>`;
+  } else {
+    sw.innerHTML=`<div class="budget-status-banner open" style="margin:10px 14px 10px">✏️ Budgets are open. Save &amp; Freeze when ready.</div>`;
+  }
+
+  // Cards
+  const container=document.getElementById('budget-cards'); container.innerHTML='';
+  CATEGORIES.forEach(c=>{
+    const div=document.createElement('div'); div.className='budget-card';
+    const disabled=(frozen||isPast)?'disabled':'';
+    div.innerHTML=`<div class="budget-card-top"><label for="bgt-${c.key}">${c.label}</label><input type="text" inputmode="numeric" id="bgt-${c.key}" value="${(md.budgets[c.key]||0).toLocaleString('en-IN')}" oninput="formatOnInput(this)" ${disabled}></div>`;
+    container.appendChild(div);
+  });
+
+  // Actions
+  const ba=document.getElementById('budget-actions'); ba.innerHTML='';
+  if(isPast){
+    // no actions
+  } else if(frozen){
+    ba.innerHTML=`<button class="btn btn-danger" onclick="requestUnfreeze()">🔓 Edit Budgets (PIN required)</button>`;
+  } else {
+    ba.innerHTML=`<button class="btn btn-primary" onclick="saveBudgets(false)">Save</button>
+                  <button class="btn btn-ghost" style="border:1.5px solid var(--yellow);color:var(--yellow)" onclick="saveBudgets(true)">Save &amp; Freeze for Month</button>`;
+  }
+}
+
+function saveBudgets(freeze){
+  CATEGORIES.forEach(c=>{ const el=document.getElementById('bgt-'+c.key); if(el) store[viewKey].budgets[c.key]=parseNum(el.value); });
+  if(freeze) store[viewKey].frozen=true;
+  saveStore(); recalc(); renderBudgets();
+  toast(freeze?'Budgets frozen for the month ✓':'Budgets saved ✓');
+}
+
+function requestUnfreeze(){
+  openMiniPin('Enter your PIN to edit frozen budgets.', ()=>{
+    store[viewKey].frozen=false;
+    saveStore(); renderBudgets(); toast('Budgets unlocked — edit and re-freeze when done.');
+  });
+}
+
+// ═══════════════════════════════════════════
+// HISTORY PAGE
+// ═══════════════════════════════════════════
+function renderHistory(){
+  const container=document.getElementById('hist-list'); container.innerHTML='';
+  const keys=Object.keys(store).sort().reverse();
+  if(!keys.length){ container.innerHTML='<div style="padding:20px 14px;color:var(--muted);font-size:0.8rem;font-family:var(--mono)">No history yet.</div>'; return; }
+  keys.forEach(key=>{
+    const md=store[key]; const budgets=md.budgets||{}; const entries=md.entries||[];
+    const days=daysInMonth(key);
+    let totalSpent=0; const catSpent={}; CATEGORIES.forEach(c=>catSpent[c.key]=0);
+    entries.forEach(e=>{ if(e.type==='exp'){ totalSpent+=e.amount; if(catSpent[e.cat]!=null) catSpent[e.cat]+=e.amount; }});
+    const totalBudget=CATEGORIES.reduce((s,c)=>s+(budgets[c.key]||0),0);
+    const overallPct=totalBudget>0?totalSpent/totalBudget:null;
+    const overallColor=overallPct===null?'green':overallPct<=1?'green':overallPct<=1.10?'yellow':'red';
+    const overallIcon=overallColor==='green'?'✅':overallColor==='yellow'?'⚠️':'🔴';
+    const card=document.createElement('div'); card.className='hist-card';
+    const catRows=CATEGORIES.map(c=>{
+      const budget=budgets[c.key]||0; const spent=catSpent[c.key]||0;
+      if(!budget&&!spent) return '';
+      const pct=budget>0?spent/budget:null;
+      const color=pct===null?'green':pct<=1?'green':pct<=1.10?'yellow':'red';
+      const icon=color==='green'?'✅':color==='yellow'?'⚠️':'🔴';
+      return `<div class="hist-cat-row"><div class="hcdot ${color}"></div><div class="hcn">${c.label}</div><div class="hca">${fmtN(spent)}${budget?' / '+fmtN(budget):''}</div><div class="hcp ${color}">${icon} ${pct!==null?Math.round(pct*100)+'%':'—'}</div></div>`;
+    }).join('');
+    card.innerHTML=`
+      <div class="hist-card-head" onclick="toggleHist('${key}')">
+        <div class="hm">${keyLabel(key)}${key===currentKey?' ·  current':''}</div>
+        <div class="hs ${overallColor}">${overallIcon} ${fmtN(totalSpent)}${totalBudget?' / '+fmtN(totalBudget):''}</div>
+      </div>
+      <div class="hist-card-body" id="hb-${key}">
+        <div class="me-overall ${overallColor}">
+          <div class="me-icon">${overallIcon}</div>
+          <div class="me-title">${overallColor==='green'?'Within Budget':overallColor==='yellow'?'Slightly Over Budget':'Over Budget'}</div>
+          <div class="me-sub">Spent ${fmtN(totalSpent)} of ${fmtN(totalBudget)} (${overallPct!==null?Math.round(overallPct*100)+'%':'—'})</div>
+        </div>
+        ${catRows}
+        <div class="scroll-pad"></div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+function toggleHist(key){ document.getElementById('hb-'+key).classList.toggle('open'); }
+
+// ═══════════════════════════════════════════
+// SETTINGS PAGE
+// ═══════════════════════════════════════════
+function renderSettings(){
+  document.getElementById('app-version-label').textContent='v'+APP_VERSION;
+  const raw=localStorage.getItem(STORAGE_KEY)||'';
+  document.getElementById('data-size-label').textContent=`${(raw.length/1024).toFixed(1)} KB`;
+}
+
+function togglePinChange(){
+  const sec=document.getElementById('pin-change-section');
+  sec.style.display=sec.style.display==='none'?'block':'none';
+  if(sec.style.display==='block'){ document.getElementById('pc-current').value=''; document.getElementById('pc-new').value=''; document.getElementById('pc-confirm').value=''; }
+}
+
+function changePin(){
+  const cur=document.getElementById('pc-current').value;
+  const nw=document.getElementById('pc-new').value;
+  const cf=document.getElementById('pc-confirm').value;
+  if(cur!==getPin()){ toast('Current PIN is incorrect'); return; }
+  if(!/^\d{4}$/.test(nw)){ toast('New PIN must be exactly 4 digits'); return; }
+  if(nw!==cf){ toast('PINs do not match'); return; }
+  localStorage.setItem(PIN_KEY,nw);
+  togglePinChange();
+  toast('PIN changed successfully ✓');
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(store,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`tamanna_budget_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast('Backup downloaded ✓');
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ═══════════════════════════════════════════
+// REFRESH
+// ═══════════════════════════════════════════
+function refreshAll(){ updateMonthNav(); recalc(); }
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+function initApp(){
+  loadStore();
+  currentKey=computeCurrentKey();
+  ensureMonth(currentKey);
+  lockPastMonths();
+  saveStore();
+  viewKey=currentKey;
+  buildCatSelect();
+  refreshAll();
+  setTimeout(()=>{ if((window._alerts||[]).length) showAlerts(); },600);
+}
+
+// Start with PIN screen
+document.getElementById('fab').style.display='none';
+</script>
+</body>
+</html>
