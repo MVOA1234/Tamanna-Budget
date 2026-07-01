@@ -863,16 +863,26 @@ function renderBudgets(){
 }
 
 function saveBudgets(freeze){
-  CATEGORIES.forEach(c=>{ const el=document.getElementById('bgt-'+c.key); if(el) store[viewKey].budgets[c.key]=parseNum(el.value); });
+  CATEGORIES.forEach(c=>{ const el=document.getElementById("bgt-"+c.key); if(el&&!el.disabled) store[viewKey].budgets[c.key]=parseNum(el.value); });
   if(freeze) store[viewKey].frozen=true;
-  saveStore(); recalc(); renderBudgets();
-  toast(freeze?'Budgets frozen for the month ✓':'Budgets saved ✓');
+  saveStore(); recalc();
+  document.getElementById("budget-status-wrap").innerHTML="";
+  document.getElementById("budget-cards").innerHTML="";
+  document.getElementById("budget-actions").innerHTML="";
+  renderBudgets();
+  toast(freeze?"Budgets frozen for the month":"Budgets saved");
 }
 
 function requestUnfreeze(){
   openMiniPin('Enter your PIN to edit frozen budgets.', ()=>{
     store[viewKey].frozen=false;
-    saveStore(); renderBudgets(); toast('Budgets unlocked — edit and re-freeze when done.');
+    saveStore();
+    // force full re-render by clearing containers first
+    document.getElementById('budget-status-wrap').innerHTML='';
+    document.getElementById('budget-cards').innerHTML='';
+    document.getElementById('budget-actions').innerHTML='';
+    renderBudgets();
+    toast('Budgets unlocked — edit and re-freeze when done.');
   });
 }
 
