@@ -1,7 +1,7 @@
 {
   "name": "Tamanna Budget",
   "short_name": "Budget",
-  "start_url": "../index.html",
+  "start_url": "/Tamanna-Budget/index.html",
   "display": "standalone",
   "background_color": "#1a1714",
   "theme_color": "#1a1714",
