@@ -1,7 +1,7 @@
 {
-  "name": "Tamanna Budget June 2026",
+  "name": "Tamanna Budget",
   "short_name": "Budget",
-  "start_url": "./Tamanna_Budget_June_2026.html",
+  "start_url": "../index.html",
   "display": "standalone",
   "background_color": "#1a1714",
   "theme_color": "#1a1714",
